@@ -1,0 +1,21 @@
+# Wishlist Price Tracker Configuration
+
+server:
+  port: 8080
+
+database:
+  path: "./wishlist.db"
+
+scheduler:
+  # Cron expression: daily at 3:00 AM
+  cron: "0 3 * * *"
+
+smtp:
+  host: "smtp.gmail.com"
+  port: 587
+  username: ""
+  password: ""
+  from: ""
+
+# Set to true to enable verbose logging
+debug: false

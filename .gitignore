@@ -1,0 +1,19 @@
+# Binary
+wishlist-tracker
+wishlist-tracker.exe
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
