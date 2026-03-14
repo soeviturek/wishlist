@@ -1,0 +1,9 @@
+*.db
+*.db-wal
+*.db-shm
+.env
+.git
+.gitignore
+.vscode
+*.exe
+wishlist-tracker
