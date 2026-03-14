@@ -26,13 +26,10 @@ COPY --from=builder /app/wishlist-tracker .
 COPY --from=builder /app/web ./web
 
 # SQLite DB will live on persistent storage
-# Azure App Service: /home is persistent
-# Fly.io: /data is a mounted volume
+# Azure App Service: /home is persistent (mounted at runtime)
 ENV DATABASE_PATH=/home/data/wishlist.db
-
-# Ensure the data directory exists
-RUN mkdir -p /home/data
 
 EXPOSE 8080
 
-CMD ["./wishlist-tracker"]
+# Create data dir at runtime (Azure mounts /home after container starts)
+CMD mkdir -p /home/data && ./wishlist-tracker
