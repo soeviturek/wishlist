@@ -9,6 +9,7 @@ type Item struct {
 	URL         string    `json:"url"`
 	Store       string    `json:"store"`
 	Name        string    `json:"name"`
+	ImageURL    string    `json:"image_url,omitempty"`
 	TargetPrice *float64  `json:"target_price,omitempty"`
 	Notified    bool      `json:"notified"`
 	CreatedAt   time.Time `json:"created_at"`

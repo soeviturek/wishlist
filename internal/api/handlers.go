@@ -67,7 +67,7 @@ func (h *Handler) RegisterItem(c *gin.Context) {
 	}
 
 	// Store the item
-	item, err := h.DB.CreateItem(req.Email, req.URL, store.Name(), product.Name, req.TargetPrice)
+	item, err := h.DB.CreateItem(req.Email, req.URL, store.Name(), product.Name, product.ImageURL, req.TargetPrice)
 	if err != nil {
 		log.Printf("[api] create item error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save item"})

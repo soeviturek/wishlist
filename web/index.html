@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wishlist Price Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>�</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
   :root {
@@ -440,7 +441,7 @@ async function toggleNotify(id) {
 
 // --- Delete ---
 async function deleteItem(id, name) {
-  if (!confirm(`Remove "${name}" from tracking?`)) return;
+  if (!confirm(`Remove "${name}" from tracking?\n\nThis will permanently delete all price history and notification records for this item. Even if you re-add it later, the historical data will be gone.`)) return;
   try {
     const res = await fetch(`${API}/items/${id}`, { method: 'DELETE' });
     if (res.ok) {

@@ -1,177 +1,148 @@
-# Wishlist Price Tracker
+# 📉 Wishlist Price Tracker
 
-A lightweight service that tracks product prices from Australian retailer URLs and sends email notifications when prices drop.
+A lightweight service that tracks product prices from Australian retailers and sends email notifications when prices drop.
+
+Paste a product URL, enter your email, and the system will monitor the price daily — notifying you when it drops or hits your target price.
+
+## Supported Stores
+
+| Store | Method |
+|---|---|
+| **Woolworths** | Internal JSON API (session cookie + `/apis/ui/product/detail/{stockcode}`) |
+| **Chemist Warehouse** | HTML scraping with embedded JSON price extraction |
+
+Adding a new store takes ~30 lines of Go — just implement the `Store` interface.
 
 ## Features
 
-- **Track product prices** via product URLs (Chemist Warehouse, Woolworths)
-- **Daily polling** — automatically checks prices once a day
-- **Price history** — stores every recorded price
-- **Email alerts** — notifies when prices drop or reach a target price
-- **Spam prevention** — avoids duplicate notifications for the same price
+- **Track products** — submit a URL + email, system scrapes name, price, and image
+- **Daily price polling** — configurable cron schedule (default: 3 AM UTC)
+- **Price history** — stored per day, viewable as a chart (Chart.js) or table
+- **Email alerts** — styled HTML emails with product image, price comparison, history table, and embedded PNG chart
+- **Digest emails** — multiple price drops = one consolidated email, not N separate ones
+- **Notification muting** — once notified, the item is muted; re-enable when ready for new alerts
+- **Manual check** — trigger a price check from the UI at any time
+- **Zero external dependencies** — single Go binary + SQLite file + one HTML page
 
-## Quick Start
+## Tech Stack
 
-### Prerequisites
-
-- Go 1.22+
-- GCC (required for SQLite via cgo) — on Windows, install [TDM-GCC](https://jmeubank.github.io/tdm-gcc/) or [MSYS2](https://www.msys2.org/)
-
-### Setup
-
-```bash
-# Clone and enter the project
-cd wishlist
-
-# Install dependencies
-go mod tidy
-
-# Copy and configure environment variables
-cp .env.example .env
-# Edit .env with your SMTP credentials
-
-# Run the server
-go run ./cmd/server
-```
-
-The server starts on `http://localhost:8080`.
-
-### API Usage
-
-#### Register a product
-```bash
-curl -X POST http://localhost:8080/items \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@email.com",
-    "url": "https://www.chemistwarehouse.com.au/buy/12345/product-name",
-    "target_price": 15.00
-  }'
-```
-
-**Response:**
-```json
-{
-  "item_id": "uuid",
-  "name": "Fish Oil 1000mg",
-  "current_price": 18.50
-}
-```
-
-#### List tracked products
-```bash
-curl "http://localhost:8080/items?email=user@email.com"
-```
-
-#### View price history
-```bash
-curl http://localhost:8080/items/{id}/history
-```
-
-**Response:**
-```json
-[
-  { "date": "2026-03-01", "price": 22.00 },
-  { "date": "2026-03-02", "price": 20.00 },
-  { "date": "2026-03-03", "price": 17.00 }
-]
-```
-
-#### Manual price check
-```bash
-curl -X POST http://localhost:8080/items/{id}/check
-```
-
-#### Delete a tracked item
-```bash
-curl -X DELETE http://localhost:8080/items/{id}
-```
-
-#### Health check
-```bash
-curl http://localhost:8080/health
-```
+| Component | Technology |
+|---|---|
+| Backend | Go 1.22, Gin |
+| Database | SQLite (pure-Go via `modernc.org/sqlite`) |
+| Scraping | `goquery`, `net/http` |
+| Scheduling | `gocron` |
+| Charts | `go-chart` (server-side PNG), Chart.js (frontend) |
+| Email | SMTP with MIME multipart (HTML + inline images) |
+| Frontend | Single HTML file, vanilla JS, no build step |
+| Config | `.env` file via `godotenv` |
 
 ## Project Structure
 
 ```
-wishlist/
-├── cmd/server/main.go           # Entry point
+wishlist-tracker/
+├── cmd/
+│   ├── server/main.go          # Entry point
+│   └── probe/main.go           # CLI tool to test scrapers
 ├── internal/
-│   ├── api/handlers.go          # Gin HTTP handlers
-│   ├── config/config.go         # Configuration from env vars
-│   ├── db/sqlite.go             # SQLite database layer
-│   ├── models/models.go         # Data models & request/response types
-│   ├── notify/email.go          # SMTP email notifications
-│   ├── scheduler/poller.go      # Daily price polling (gocron)
+│   ├── api/handlers.go         # Gin HTTP handlers
+│   ├── chart/chart.go          # PNG chart generation
+│   ├── config/config.go        # Env-based configuration
+│   ├── db/sqlite.go            # SQLite database layer
+│   ├── models/models.go        # Data models
+│   ├── notify/email.go         # Email notifications (Notifier interface)
+│   ├── scheduler/poller.go     # Daily price polling
 │   └── stores/
-│       ├── store.go             # Store interface & registry
-│       ├── chemistwarehouse.go  # Chemist Warehouse scraper
-│       └── woolworths.go        # Woolworths scraper
-├── go.mod
-├── config.yaml
-├── .env.example
-└── README.md
+│       ├── store.go            # Store interface + registry
+│       ├── woolworths.go       # Woolworths scraper
+│       └── chemistwarehouse.go # Chemist Warehouse scraper
+├── web/index.html              # Frontend (single file)
+├── Dockerfile                  # Multi-stage Docker build
+├── fly.toml                    # Fly.io deployment config
+├── .env                        # Local secrets (gitignored)
+└── go.mod
 ```
 
-## Adding a New Store Scraper
+## Quick Start (Local)
 
-Create a new file in `internal/stores/` (~30 lines):
+```bash
+# Clone
+git clone https://github.com/soeviturek/wishlist.git
+cd wishlist
+
+# Create .env file with your SMTP credentials
+cat > .env << 'EOF'
+SERVER_PORT=8080
+DATABASE_PATH=./wishlist.db
+SCHEDULER_CRON=0 3 * * *
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-gmail-app-password
+SMTP_FROM=your-email@gmail.com
+EOF
+
+# Run
+CGO_ENABLED=0 go run cmd/server/main.go
+```
+
+Open http://localhost:8080
+
+## Configuration
+
+All config is via environment variables (or `.env` file):
+
+| Variable | Default | Description |
+|---|---|---|
+| `SERVER_PORT` | `8080` | HTTP port |
+| `DATABASE_PATH` | `./wishlist.db` | SQLite database file path |
+| `SCHEDULER_CRON` | `0 3 * * *` | Cron expression for daily polling |
+| `SMTP_HOST` | `smtp.gmail.com` | SMTP server |
+| `SMTP_PORT` | `587` | SMTP port |
+| `SMTP_USERNAME` | | Gmail address |
+| `SMTP_PASSWORD` | | Gmail App Password |
+| `SMTP_FROM` | | Sender email address |
+| `DEBUG` | `false` | Enable verbose logging |
+
+## API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/items` | Register a product to track |
+| `GET` | `/items?email=...` | List tracked items for an email |
+| `GET` | `/items/:id/history` | Get price history |
+| `GET` | `/items/:id/chart.png` | Get price history as PNG chart |
+| `POST` | `/items/:id/check` | Manually trigger a price check |
+| `PATCH` | `/items/:id/notify` | Toggle notification mute |
+| `DELETE` | `/items/:id` | Remove a tracked item |
+| `GET` | `/health` | Health check |
+
+## Deployment
+
+See [DEPLOY.md](DEPLOY.md) for full Azure App Service deployment guide.
+
+## Adding a New Store
+
+Implement the `Store` interface in `internal/stores/`:
 
 ```go
-package stores
-
-import (
-    "strings"
-    "wishlist-tracker/internal/models"
-)
-
-type MyStore struct{}
-
-func (s *MyStore) Match(url string) bool {
-    return strings.Contains(strings.ToLower(url), "mystore.com.au")
-}
-
-func (s *MyStore) Name() string {
-    return "My Store"
-}
-
-func (s *MyStore) GetProduct(url string) (*models.Product, error) {
-    // Fetch and parse the page...
-    return &models.Product{Name: "Product", Price: 9.99}, nil
+type Store interface {
+    Match(url string) bool
+    Name() string
+    GetProduct(url string) (*models.Product, error)
 }
 ```
 
 Then register it in `internal/stores/store.go`:
+
 ```go
 func init() {
     Register(&ChemistWarehouse{})
     Register(&Woolworths{})
-    Register(&MyStore{})        // ← add here
+    Register(&YourNewStore{})  // add here
 }
 ```
 
-## Configuration
+## License
 
-All settings are read from environment variables:
-
-| Variable | Default | Description |
-|---|---|---|
-| `SERVER_PORT` | `8080` | HTTP server port |
-| `DATABASE_PATH` | `./wishlist.db` | SQLite database file path |
-| `SCHEDULER_CRON` | `0 3 * * *` | Polling cron (daily at 3 AM UTC) |
-| `SMTP_HOST` | `smtp.gmail.com` | SMTP server host |
-| `SMTP_PORT` | `587` | SMTP server port |
-| `SMTP_USERNAME` | — | SMTP login |
-| `SMTP_PASSWORD` | — | SMTP password (use app password for Gmail) |
-| `SMTP_FROM` | — | Sender email address |
-| `DEBUG` | `false` | Enable verbose logging |
-
-## Technology Stack
-
-- **Go** — backend language
-- **Gin** — HTTP framework
-- **SQLite** — database (via go-sqlite3)
-- **goquery** — HTML scraping
-- **gocron** — job scheduler
-- **SMTP** — email notifications
+MIT

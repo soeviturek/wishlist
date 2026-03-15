@@ -21,8 +21,23 @@ func fmtTime(t time.Time) string { return t.UTC().Format(sqliteTimeFmt) }
 
 // parseTime parses a SQLite timestamp string back to time.Time.
 func parseTime(s string) time.Time {
-	t, _ := time.Parse(sqliteTimeFmt, s)
-	return t
+	// Try our standard format first
+	if t, err := time.Parse(sqliteTimeFmt, s); err == nil {
+		return t
+	}
+	// Try RFC3339 (how Go's time.Time marshals by default)
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t
+	}
+	// Try with fractional seconds
+	if t, err := time.Parse("2006-01-02 15:04:05.999999999", s); err == nil {
+		return t
+	}
+	// Try SQLite's CURRENT_TIMESTAMP format
+	if t, err := time.Parse("2006-01-02T15:04:05Z", s); err == nil {
+		return t
+	}
+	return time.Time{}
 }
 
 // DB wraps the SQLite database connection.
@@ -93,6 +108,7 @@ func (d *DB) migrate() error {
 
 	// Add notified column if it doesn't exist (migration for existing DBs).
 	d.conn.Exec(`ALTER TABLE items ADD COLUMN notified INTEGER NOT NULL DEFAULT 0`)
+	d.conn.Exec(`ALTER TABLE items ADD COLUMN image_url TEXT NOT NULL DEFAULT ''`)
 
 	return nil
 }
@@ -102,14 +118,14 @@ func (d *DB) migrate() error {
 // ---------------------------------------------------------------------------
 
 // CreateItem inserts a new tracked item and returns it.
-func (d *DB) CreateItem(email, url, store, name string, targetPrice *float64) (*models.Item, error) {
+func (d *DB) CreateItem(email, url, store, name, imageURL string, targetPrice *float64) (*models.Item, error) {
 	id := uuid.New().String()
 	now := time.Now().UTC()
 
 	_, err := d.conn.Exec(
-		`INSERT INTO items (id, email, url, store, name, target_price, notified, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
-		id, email, url, store, name, targetPrice, fmtTime(now),
+		`INSERT INTO items (id, email, url, store, name, image_url, target_price, notified, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+		id, email, url, store, name, imageURL, targetPrice, fmtTime(now),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert item: %w", err)
@@ -121,6 +137,7 @@ func (d *DB) CreateItem(email, url, store, name string, targetPrice *float64) (*
 		URL:         url,
 		Store:       store,
 		Name:        name,
+		ImageURL:    imageURL,
 		TargetPrice: targetPrice,
 		CreatedAt:   now,
 	}, nil
@@ -129,12 +146,12 @@ func (d *DB) CreateItem(email, url, store, name string, targetPrice *float64) (*
 // GetItemByID retrieves a single item by ID.
 func (d *DB) GetItemByID(id string) (*models.Item, error) {
 	row := d.conn.QueryRow(
-		`SELECT id, email, url, store, name, target_price, notified, created_at FROM items WHERE id = ?`, id,
+		`SELECT id, email, url, store, name, image_url, target_price, notified, created_at FROM items WHERE id = ?`, id,
 	)
 
 	var item models.Item
 	var createdAt string
-	err := row.Scan(&item.ID, &item.Email, &item.URL, &item.Store, &item.Name, &item.TargetPrice, &item.Notified, &createdAt)
+	err := row.Scan(&item.ID, &item.Email, &item.URL, &item.Store, &item.Name, &item.ImageURL, &item.TargetPrice, &item.Notified, &createdAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -148,7 +165,7 @@ func (d *DB) GetItemByID(id string) (*models.Item, error) {
 // ListItemsByEmail returns all items for a given email.
 func (d *DB) ListItemsByEmail(email string) ([]models.Item, error) {
 	rows, err := d.conn.Query(
-		`SELECT id, email, url, store, name, target_price, notified, created_at FROM items WHERE email = ? ORDER BY created_at DESC`, email,
+		`SELECT id, email, url, store, name, image_url, target_price, notified, created_at FROM items WHERE email = ? ORDER BY created_at DESC`, email,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list items: %w", err)
@@ -159,7 +176,7 @@ func (d *DB) ListItemsByEmail(email string) ([]models.Item, error) {
 	for rows.Next() {
 		var item models.Item
 		var createdAt string
-		if err := rows.Scan(&item.ID, &item.Email, &item.URL, &item.Store, &item.Name, &item.TargetPrice, &item.Notified, &createdAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Email, &item.URL, &item.Store, &item.Name, &item.ImageURL, &item.TargetPrice, &item.Notified, &createdAt); err != nil {
 			return nil, fmt.Errorf("scan item: %w", err)
 		}
 		item.CreatedAt = parseTime(createdAt)
@@ -171,7 +188,7 @@ func (d *DB) ListItemsByEmail(email string) ([]models.Item, error) {
 // GetAllItems returns every tracked item (used by the poller).
 func (d *DB) GetAllItems() ([]models.Item, error) {
 	rows, err := d.conn.Query(
-		`SELECT id, email, url, store, name, target_price, notified, created_at FROM items WHERE notified = 0 ORDER BY created_at`,
+		`SELECT id, email, url, store, name, image_url, target_price, notified, created_at FROM items WHERE notified = 0 ORDER BY created_at`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get all items: %w", err)
@@ -182,7 +199,7 @@ func (d *DB) GetAllItems() ([]models.Item, error) {
 	for rows.Next() {
 		var item models.Item
 		var createdAt string
-		if err := rows.Scan(&item.ID, &item.Email, &item.URL, &item.Store, &item.Name, &item.TargetPrice, &item.Notified, &createdAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Email, &item.URL, &item.Store, &item.Name, &item.ImageURL, &item.TargetPrice, &item.Notified, &createdAt); err != nil {
 			return nil, fmt.Errorf("scan item: %w", err)
 		}
 		item.CreatedAt = parseTime(createdAt)
