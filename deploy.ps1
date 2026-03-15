@@ -45,15 +45,16 @@ Start-Sleep -Seconds 30
 Write-Host ""
 Write-Host "Running health check..." -ForegroundColor Yellow
 try {
-    $response = Invoke-WebRequest -Uri "https://$AppName.azurewebsites.net/health" -TimeoutSec 30 -UseBasicParsing
+    $url = "https://${AppName}.azurewebsites.net"
+    $response = Invoke-WebRequest -Uri "$url/health" -TimeoutSec 30 -UseBasicParsing
     if ($response.StatusCode -eq 200) {
         Write-Host ""
         Write-Host "Deployed successfully!" -ForegroundColor Green
-        Write-Host "https://$AppName.azurewebsites.net" -ForegroundColor Cyan
+        Write-Host $url -ForegroundColor Cyan
     }
 } catch {
     Write-Host ""
-    Write-Host "Health check failed — app may still be starting." -ForegroundColor Yellow
+    Write-Host "Health check failed - app may still be starting." -ForegroundColor Yellow
     Write-Host "Check logs:  az webapp log tail --name $AppName --resource-group $ResourceGroup" -ForegroundColor Gray
-    Write-Host "URL:         https://$AppName.azurewebsites.net" -ForegroundColor Cyan
+    Write-Host "URL: $url" -ForegroundColor Cyan
 }
