@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wishlist Price Tracker</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>�</text></svg>">
+<link rel="icon" type="image/png" href="/assets/favicon.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
   :root {
@@ -391,6 +391,7 @@ async function loadItems(email) {
           <div class="item-price">${price}</div>
           <div class="item-actions">
             <button class="btn btn-primary" style="font-size:12px;padding:6px 12px;" onclick="showHistory('${item.id}','${esc(item.name)}')">📊 History</button>
+            <button class="btn btn-secondary" onclick="editTarget('${item.id}','${esc(item.name)}',${item.target_price || 'null'})">🎯 Target</button>
             ${notifyBtn}
             <button class="btn btn-secondary" onclick="checkNow('${item.id}')">🔄 Check</button>
             <button class="btn btn-danger" onclick="deleteItem('${item.id}','${esc(item.name)}')">🗑 Remove</button>
@@ -416,6 +417,39 @@ async function checkNow(id) {
       if (email) loadItems(email);
     } else {
       toast(data.error || 'Check failed', 'error');
+    }
+  } catch (err) {
+    toast('Error: ' + err.message, 'error');
+  }
+}
+
+// --- Edit target price ---
+async function editTarget(id, name, currentTarget) {
+  const input = prompt(
+    `Set target price for "${name}"\n\nEnter a price (e.g. 12.50) or leave empty to remove the target:`,
+    currentTarget != null ? currentTarget.toFixed(2) : ''
+  );
+  if (input === null) return; // cancelled
+
+  const targetPrice = input.trim() === '' ? null : parseFloat(input.trim());
+  if (targetPrice !== null && (isNaN(targetPrice) || targetPrice < 0)) {
+    toast('Invalid price', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/items/${id}/target`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_price: targetPrice })
+    });
+    if (res.ok) {
+      toast(targetPrice != null ? `Target set to $${targetPrice.toFixed(2)}` : 'Target removed');
+      const email = document.getElementById('lookupEmail').value.trim();
+      if (email) loadItems(email);
+    } else {
+      const data = await res.json();
+      toast(data.error || 'Update failed', 'error');
     }
   } catch (err) {
     toast('Error: ' + err.message, 'error');

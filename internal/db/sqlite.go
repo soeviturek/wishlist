@@ -214,6 +214,12 @@ func (d *DB) DeleteItem(id string) error {
 	return err
 }
 
+// UpdateTargetPrice updates the target price for an item. Pass nil to remove the target.
+func (d *DB) UpdateTargetPrice(id string, targetPrice *float64) error {
+	_, err := d.conn.Exec(`UPDATE items SET target_price = ? WHERE id = ?`, targetPrice, id)
+	return err
+}
+
 // SetNotified sets the notified flag on an item (true = muted, false = active).
 func (d *DB) SetNotified(id string, notified bool) error {
 	val := 0

@@ -32,6 +32,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.GET("/items/:id/chart.png", h.GetPriceChart)
 	r.POST("/items/:id/check", h.ManualCheck)
 	r.PATCH("/items/:id/notify", h.ToggleNotify)
+	r.PATCH("/items/:id/target", h.UpdateTarget)
 	r.DELETE("/items/:id", h.DeleteItem)
 	r.GET("/health", h.HealthCheck)
 }
@@ -277,6 +278,38 @@ func (h *Handler) ManualCheck(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// UpdateTarget handles PATCH /items/:id/target — updates the target price.
+func (h *Handler) UpdateTarget(c *gin.Context) {
+	id := c.Param("id")
+
+	item, err := h.DB.GetItemByID(id)
+	if err != nil {
+		log.Printf("[api] get item error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+	if item == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
+		return
+	}
+
+	var req struct {
+		TargetPrice *float64 `json:"target_price"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.DB.UpdateTargetPrice(id, req.TargetPrice); err != nil {
+		log.Printf("[api] update target error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update target price"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"id": id, "target_price": req.TargetPrice})
 }
 
 // ToggleNotify handles PATCH /items/:id/notify — toggles the notified (muted) flag.

@@ -59,6 +59,7 @@ func main() {
 	// Serve frontend static files
 	router.StaticFile("/", "./web/index.html")
 	router.StaticFile("/index.html", "./web/index.html")
+	router.Static("/assets", "./web/assets")
 	router.Static("/static", "./web/static")
 
 	// Initialize and start scheduler
