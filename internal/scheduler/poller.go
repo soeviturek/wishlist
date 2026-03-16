@@ -143,12 +143,18 @@ func (p *Poller) pollAll() {
 			log.Printf("[scheduler] Chart generation failed for %s: %v", item.Name, chartErr)
 		}
 
+		// Use the original (first) price for the email, not yesterday's price
+		originalPrice := prevPrice.Price
+		if first, err := p.db.GetFirstPrice(item.ID); err == nil && first != nil {
+			originalPrice = first.Price
+		}
+
 		alertsByEmail[item.Email] = append(alertsByEmail[item.Email], pendingAlert{
 			alert: notify.PriceDropAlert{
 				ProductName:  item.Name,
 				ProductURL:   item.URL,
 				ImageURL:     product.ImageURL,
-				OldPrice:     prevPrice.Price,
+				OldPrice:     originalPrice,
 				NewPrice:     product.Price,
 				IsTarget:     isTarget,
 				PriceHistory: history,

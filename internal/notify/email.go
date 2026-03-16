@@ -139,7 +139,7 @@ func buildDigestHTML(alerts []PriceDropAlert, subject string) string {
 	sb.WriteString(fmt.Sprintf(`<p style="margin:6px 0 0;opacity:.8;font-size:14px;">%d of your tracked products have price changes</p>`, len(alerts)))
 	sb.WriteString(`</div>`)
 
-	// Each alert as a card
+	// Each alert as a card — using table layout for email client compatibility
 	for i, a := range alerts {
 		savings := a.OldPrice - a.NewPrice
 		savingsPct := float64(0)
@@ -156,34 +156,41 @@ func buildDigestHTML(alerts []PriceDropAlert, subject string) string {
 			borderTop = "border-top:1px solid #e2e8f0;"
 		}
 
-		badge := `<span style="background:#2563eb;color:white;font-size:11px;padding:2px 8px;border-radius:4px;">PRICE DROP</span>`
+		badge := `<span style="display:inline-block;background:#2563eb;color:white;font-size:11px;padding:2px 8px;border-radius:4px;margin-bottom:4px;">PRICE DROP</span>`
 		if a.IsTarget {
-			badge = `<span style="background:#16a34a;color:white;font-size:11px;padding:2px 8px;border-radius:4px;">🎯 TARGET REACHED</span>`
+			badge = `<span style="display:inline-block;background:#16a34a;color:white;font-size:11px;padding:2px 8px;border-radius:4px;margin-bottom:4px;">🎯 TARGET REACHED</span>`
 		}
 
-		sb.WriteString(fmt.Sprintf(`<div style="background:%s;padding:20px 30px;%s">`, bgColor, borderTop))
-
-		// Product row: image + info + prices
-		sb.WriteString(`<div style="display:flex;align-items:center;gap:14px;">`)
-		if a.ImageURL != "" {
-			sb.WriteString(fmt.Sprintf(`<img src="%s" alt="" style="width:60px;height:60px;object-fit:contain;border-radius:8px;border:1px solid #e2e8f0;flex-shrink:0;">`, a.ImageURL))
-		}
-		sb.WriteString(`<div style="flex:1;min-width:0;">`)
-		sb.WriteString(fmt.Sprintf(`<div style="margin-bottom:4px;">%s</div>`, badge))
-		sb.WriteString(fmt.Sprintf(`<div style="font-weight:600;font-size:15px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">%s</div>`, a.ProductName))
-		sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;color:#64748b;margin-top:2px;"><s style="color:#dc2626;">$%.2f</s> → <strong style="color:#16a34a;">$%.2f</strong>`, a.OldPrice, a.NewPrice))
+		savingsStr := ""
 		if savings > 0 {
-			sb.WriteString(fmt.Sprintf(` <span style="color:#16a34a;font-size:12px;">(save $%.2f / %.0f%%)</span>`, savings, savingsPct))
+			savingsStr = fmt.Sprintf(` <span style="color:#16a34a;font-size:12px;">(save $%.2f / %.0f%%)</span>`, savings, savingsPct)
 		}
-		sb.WriteString(`</div>`)
-		sb.WriteString(`</div>`) // end info
-		sb.WriteString(fmt.Sprintf(`<a href="%s" style="flex-shrink:0;background:#2563eb;color:white;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">View →</a>`, a.ProductURL))
-		sb.WriteString(`</div>`) // end row
+
+		sb.WriteString(fmt.Sprintf(`<div style="background:%s;padding:16px 24px;%s">`, bgColor, borderTop))
+		// Table layout: [image] [info] [button]
+		sb.WriteString(`<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>`)
+
+		// Image cell
+		if a.ImageURL != "" {
+			sb.WriteString(fmt.Sprintf(`<td width="60" valign="top" style="padding-right:12px;"><img src="%s" alt="" width="60" height="60" style="display:block;border-radius:8px;border:1px solid #e2e8f0;object-fit:contain;"></td>`, a.ImageURL))
+		}
+
+		// Info cell
+		sb.WriteString(`<td valign="top" style="padding-right:12px;">`)
+		sb.WriteString(badge)
+		sb.WriteString(fmt.Sprintf(`<div style="font-weight:600;font-size:14px;color:#1e293b;margin-bottom:4px;">%s</div>`, a.ProductName))
+		sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;color:#64748b;"><s style="color:#dc2626;">$%.2f</s> &rarr; <strong style="color:#16a34a;font-size:15px;">$%.2f</strong>%s</div>`, a.OldPrice, a.NewPrice, savingsStr))
+		sb.WriteString(`</td>`)
+
+		// Button cell — fixed width, vertically centered
+		sb.WriteString(fmt.Sprintf(`<td width="70" valign="middle" align="center"><a href="%s" style="display:inline-block;background:#2563eb;color:white;padding:10px 14px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;white-space:nowrap;">View &rarr;</a></td>`, a.ProductURL))
+
+		sb.WriteString(`</tr></table>`)
 		sb.WriteString(`</div>`) // end card
 	}
 
 	// Footer
-	sb.WriteString(`<div style="padding:16px 30px;background:#ffffff;border-top:1px solid #e2e8f0;border-radius:0 0 12px 12px;text-align:center;font-size:12px;color:#94a3b8;">Wishlist Price Tracker — You're receiving this because you registered these products for tracking.</div>`)
+	sb.WriteString(`<div style="padding:16px 30px;background:#ffffff;border-top:1px solid #e2e8f0;border-radius:0 0 12px 12px;text-align:center;font-size:12px;color:#94a3b8;">Wishlist Price Tracker - You're receiving this because you registered these products for tracking.</div>`)
 	sb.WriteString(`</div></body></html>`)
 
 	return sb.String()

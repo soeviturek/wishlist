@@ -308,6 +308,26 @@ func (d *DB) GetLatestPrice(itemID string) (*models.Price, error) {
 	return &p, nil
 }
 
+// GetFirstPrice returns the earliest recorded price for an item (the "original" price).
+func (d *DB) GetFirstPrice(itemID string) (*models.Price, error) {
+	row := d.conn.QueryRow(
+		`SELECT id, item_id, price, recorded_at FROM prices WHERE item_id = ? ORDER BY recorded_at ASC LIMIT 1`,
+		itemID,
+	)
+
+	var p models.Price
+	var recordedAt string
+	err := row.Scan(&p.ID, &p.ItemID, &p.Price, &recordedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get first price: %w", err)
+	}
+	p.RecordedAt = parseTime(recordedAt)
+	return &p, nil
+}
+
 // GetPriceHistory returns all recorded prices for an item (one per day, oldest first).
 func (d *DB) GetPriceHistory(itemID string) ([]models.PriceHistory, error) {
 	rows, err := d.conn.Query(
