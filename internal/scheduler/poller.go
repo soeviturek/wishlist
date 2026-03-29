@@ -108,6 +108,20 @@ func (p *Poller) pollAll() {
 			continue // first price, nothing to compare
 		}
 
+		// If price went UP while muted, only unmute if it rose above target (or no target set).
+		// If still at/below target, stay muted — just record the price silently.
+		if product.Price > prevPrice.Price && item.Notified {
+			if item.TargetPrice == nil || product.Price > *item.TargetPrice {
+				if err := p.db.SetNotified(item.ID, false); err != nil {
+					log.Printf("[scheduler] Error unmuting %s: %v", item.ID, err)
+				}
+				log.Printf("[scheduler] Price rose above target for %s ($%.2f -> $%.2f) — reactivated", item.Name, prevPrice.Price, product.Price)
+			} else {
+				log.Printf("[scheduler] Price rose for %s ($%.2f -> $%.2f) but still at/below target — staying muted", item.Name, prevPrice.Price, product.Price)
+			}
+			continue
+		}
+
 		shouldNotify := false
 		isTarget := false
 

@@ -188,7 +188,7 @@ func (d *DB) ListItemsByEmail(email string) ([]models.Item, error) {
 // GetAllItems returns every tracked item (used by the poller).
 func (d *DB) GetAllItems() ([]models.Item, error) {
 	rows, err := d.conn.Query(
-		`SELECT id, email, url, store, name, image_url, target_price, notified, created_at FROM items WHERE notified = 0 ORDER BY created_at`,
+		`SELECT id, email, url, store, name, image_url, target_price, notified, created_at FROM items ORDER BY created_at`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get all items: %w", err)
