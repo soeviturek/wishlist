@@ -37,4 +37,5 @@ func Detect(url string) (Store, error) {
 func init() {
 	Register(&ChemistWarehouse{})
 	Register(&Woolworths{})
+	Register(&IHerb{})
 }
