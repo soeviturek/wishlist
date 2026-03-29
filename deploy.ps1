@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 $ResourceGroup = "wishlist-rg"
 $AcrName       = "wishlistacr"
 $ImageName     = "wishlist-tracker"
-$ImageTag      = "latest"
+$ImageTag      = "v3"
 $AppName       = "wishlist-tracker-app"
 
 Write-Host "=== Wishlist Price Tracker - Azure Deploy ===" -ForegroundColor Cyan

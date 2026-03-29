@@ -1,8 +1,10 @@
 package stores
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -12,6 +14,7 @@ import (
 	"wishlist-tracker/internal/models"
 
 	"github.com/PuerkitoBio/goquery"
+	utls "github.com/refraction-networking/utls"
 )
 
 // iherbProductRe extracts the numeric product ID from an iHerb URL.
@@ -44,10 +47,13 @@ type iherbOffer struct {
 	Currency string `json:"priceCurrency"`
 }
 
-func (i *IHerb) GetProduct(url string) (*models.Product, error) {
-	client := &http.Client{Timeout: 20 * time.Second}
+func (i *IHerb) GetProduct(productURL string) (*models.Product, error) {
+	// Use a custom transport with utls to impersonate Chrome's TLS fingerprint,
+	// which is needed to pass Cloudflare's bot detection from cloud IPs.
+	transport := newUTLSTransport()
+	client := &http.Client{Transport: transport, Timeout: 20 * time.Second}
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", productURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -112,4 +118,71 @@ func (i *IHerb) GetProduct(url string) (*models.Product, error) {
 		Price:    price,
 		ImageURL: imageURL,
 	}, nil
+}
+
+// utlsRoundTripper wraps a utls connection to handle HTTP/1.1 requests
+// with a Chrome-like TLS fingerprint.
+type utlsRoundTripper struct {
+	dialer *net.Dialer
+}
+
+func newUTLSTransport() http.RoundTripper {
+	return &utlsRoundTripper{
+		dialer: &net.Dialer{Timeout: 10 * time.Second},
+	}
+}
+
+func (u *utlsRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	host := req.URL.Hostname()
+	port := req.URL.Port()
+	if port == "" {
+		port = "443"
+	}
+	addr := net.JoinHostPort(host, port)
+
+	// Get Chrome's TLS hello spec and strip h2 to force HTTP/1.1
+	spec, err := utls.UTLSIdToSpec(utls.HelloChrome_Auto)
+	if err != nil {
+		return nil, fmt.Errorf("get utls spec: %w", err)
+	}
+	for i, ext := range spec.Extensions {
+		if alpn, ok := ext.(*utls.ALPNExtension); ok {
+			filtered := make([]string, 0, len(alpn.AlpnProtocols))
+			for _, proto := range alpn.AlpnProtocols {
+				if proto != "h2" {
+					filtered = append(filtered, proto)
+				}
+			}
+			alpn.AlpnProtocols = filtered
+			spec.Extensions[i] = alpn
+			break
+		}
+	}
+
+	conn, err := u.dialer.DialContext(req.Context(), "tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("dial: %w", err)
+	}
+
+	tlsConn := utls.UClient(conn, &utls.Config{
+		ServerName: host,
+		MinVersion: tls.VersionTLS12,
+	}, utls.HelloCustom)
+	if err := tlsConn.ApplyPreset(&spec); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("apply preset: %w", err)
+	}
+	if err := tlsConn.Handshake(); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("handshake: %w", err)
+	}
+
+	// Use a standard HTTP/1.1 transport over the utls connection
+	t := &http.Transport{
+		DialTLS: func(network, a string) (net.Conn, error) {
+			return tlsConn, nil
+		},
+		DisableKeepAlives: true,
+	}
+	return t.RoundTrip(req)
 }
