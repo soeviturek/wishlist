@@ -214,6 +214,16 @@ func (d *DB) DeleteItem(id string) error {
 	return err
 }
 
+// ItemExistsByEmailAndURL checks if an item with the given email and URL already exists.
+func (d *DB) ItemExistsByEmailAndURL(email, url string) (bool, error) {
+	var count int
+	err := d.conn.QueryRow(`SELECT COUNT(*) FROM items WHERE email = ? AND url = ?`, email, url).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("check duplicate item: %w", err)
+	}
+	return count > 0, nil
+}
+
 // UpdateTargetPrice updates the target price for an item. Pass nil to remove the target.
 func (d *DB) UpdateTargetPrice(id string, targetPrice *float64) error {
 	_, err := d.conn.Exec(`UPDATE items SET target_price = ? WHERE id = ?`, targetPrice, id)

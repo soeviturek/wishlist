@@ -57,6 +57,18 @@ func (h *Handler) RegisterItem(c *gin.Context) {
 		return
 	}
 
+	// Check for duplicate (same email + URL)
+	exists, err := h.DB.ItemExistsByEmailAndURL(req.Email, req.URL)
+	if err != nil {
+		log.Printf("[api] duplicate check error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check for duplicates"})
+		return
+	}
+	if exists {
+		c.JSON(http.StatusConflict, gin.H{"error": "you are already tracking this product"})
+		return
+	}
+
 	// Scrape product info
 	product, err := store.GetProduct(req.URL)
 	if err != nil {

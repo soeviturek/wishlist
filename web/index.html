@@ -124,6 +124,40 @@
   }
   .lookup > div { flex: 1; }
 
+  /* --- Search bar --- */
+  .search-bar {
+    margin-bottom: 12px;
+  }
+  .search-bar input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  /* --- Pagination --- */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--gray-500);
+  }
+  .pagination button {
+    padding: 6px 14px;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    background: white;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .pagination button:hover:not(:disabled) { background: var(--gray-100); }
+  .pagination button:disabled { opacity: .4; cursor: not-allowed; }
+
   /* --- Items List --- */
   .item-card {
     display: flex;
@@ -251,12 +285,17 @@
       </div>
       <button class="btn btn-primary" id="lookupBtn" style="margin-bottom:1px;">Load</button>
     </div>
+    <div class="search-bar" id="searchBar" style="display:none;">
+      <label for="searchInput">Search Items</label>
+      <input type="text" id="searchInput" placeholder="Type to filter items by name...">
+    </div>
     <div id="itemsList">
       <div class="empty-state">
         <span>📋</span>
         Enter your email above to see your tracked items
       </div>
     </div>
+    <div class="pagination" id="pagination" style="display:none;"></div>
   </div>
 
 </div>
@@ -346,9 +385,101 @@ document.getElementById('lookupEmail').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('lookupBtn').click();
 });
 
+// --- Search & Pagination state ---
+let allItems = [];
+let currentPage = 1;
+const PAGE_SIZE = 10;
+
+document.getElementById('searchInput').addEventListener('input', () => {
+  currentPage = 1;
+  renderItems();
+});
+
+function getFilteredItems() {
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!query) return allItems;
+  return allItems.filter(item => item.name.toLowerCase().includes(query));
+}
+
+function renderItems() {
+  const container = document.getElementById('itemsList');
+  const paginationEl = document.getElementById('pagination');
+  const filtered = getFilteredItems();
+
+  if (!filtered.length) {
+    const query = document.getElementById('searchInput').value.trim();
+    container.innerHTML = query
+      ? '<div class="empty-state"><span>🔍</span>No items match your search.</div>'
+      : '<div class="empty-state"><span>📭</span>No tracked items yet.<br>Add a product URL above!</div>';
+    paginationEl.style.display = 'none';
+    return;
+  }
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+  container.innerHTML = pageItems.map(item => {
+    const price = item.current_price != null ? `$${item.current_price.toFixed(2)}` : '—';
+    const target = item.target_price ? `Target: $${item.target_price.toFixed(2)}` : '';
+    const imgSrc = item.image_url || '';
+    const imgTag = imgSrc
+      ? `<img class="item-img" src="${imgSrc}" alt="" onerror="this.style.display='none'">`
+      : `<div class="item-img" style="display:flex;align-items:center;justify-content:center;font-size:24px;">📦</div>`;
+
+    const muted = item.notified;
+    const notifyBadge = muted
+      ? `<span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;">🔕 Muted</span>`
+      : `<span style="font-size:11px;background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;">🔔 Active</span>`;
+    const notifyBtn = muted
+      ? `<button class="btn btn-primary" style="font-size:12px;padding:6px 12px;" onclick="toggleNotify('${item.id}')">🔔 Re-enable</button>`
+      : `<button class="btn btn-secondary" onclick="toggleNotify('${item.id}')">🔕 Mute</button>`;
+
+    return `
+      <div class="item-card" ${muted ? 'style="opacity:.6;"' : ''}>
+        ${imgTag}
+        <div class="item-info">
+          <div class="item-name" title="${esc(item.name)}">${esc(item.name)}</div>
+          <div class="item-store">${esc(item.store)} · Added ${new Date(item.created_at).toLocaleDateString()} · ${notifyBadge}</div>
+          ${target ? `<div class="item-target">${target}</div>` : ''}
+        </div>
+        <div class="item-price">${price}</div>
+        <div class="item-actions">
+          <button class="btn btn-primary" style="font-size:12px;padding:6px 12px;" onclick="showHistory('${item.id}','${esc(item.name)}')">📊 History</button>
+          <button class="btn btn-secondary" onclick="editTarget('${item.id}','${esc(item.name)}',${item.target_price || 'null'})">🎯 Target</button>
+          ${notifyBtn}
+          <button class="btn btn-secondary" onclick="checkNow('${item.id}')">🔄 Check</button>
+          <button class="btn btn-danger" onclick="deleteItem('${item.id}','${esc(item.name)}')">🗑 Remove</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Pagination controls
+  if (totalPages > 1) {
+    paginationEl.style.display = 'flex';
+    paginationEl.innerHTML = `
+      <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
+      <span>Page ${currentPage} of ${totalPages}</span>
+      <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+    `;
+  } else {
+    paginationEl.style.display = 'none';
+  }
+}
+
+function goToPage(page) {
+  currentPage = page;
+  renderItems();
+}
+
 async function loadItems(email) {
   const container = document.getElementById('itemsList');
+  const searchBar = document.getElementById('searchBar');
+  const paginationEl = document.getElementById('pagination');
   container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);">Loading...</div>';
+  searchBar.style.display = 'none';
+  paginationEl.style.display = 'none';
 
   try {
     const res = await fetch(`${API}/items?email=${encodeURIComponent(email)}`);
@@ -359,45 +490,17 @@ async function loadItems(email) {
       return;
     }
 
+    allItems = items;
+    currentPage = 1;
+    document.getElementById('searchInput').value = '';
+
     if (!items.length) {
       container.innerHTML = '<div class="empty-state"><span>📭</span>No tracked items yet.<br>Add a product URL above!</div>';
       return;
     }
 
-    container.innerHTML = items.map(item => {
-      const price = item.current_price != null ? `$${item.current_price.toFixed(2)}` : '—';
-      const target = item.target_price ? `Target: $${item.target_price.toFixed(2)}` : '';
-      const imgSrc = item.image_url || '';
-      const imgTag = imgSrc
-        ? `<img class="item-img" src="${imgSrc}" alt="" onerror="this.style.display='none'">`
-        : `<div class="item-img" style="display:flex;align-items:center;justify-content:center;font-size:24px;">📦</div>`;
-
-      const muted = item.notified;
-      const notifyBadge = muted
-        ? `<span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;">🔕 Muted</span>`
-        : `<span style="font-size:11px;background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;">🔔 Active</span>`;
-      const notifyBtn = muted
-        ? `<button class="btn btn-primary" style="font-size:12px;padding:6px 12px;" onclick="toggleNotify('${item.id}')">🔔 Re-enable</button>`
-        : `<button class="btn btn-secondary" onclick="toggleNotify('${item.id}')">🔕 Mute</button>`;
-
-      return `
-        <div class="item-card" ${muted ? 'style="opacity:.6;"' : ''}>
-          ${imgTag}
-          <div class="item-info">
-            <div class="item-name" title="${esc(item.name)}">${esc(item.name)}</div>
-            <div class="item-store">${esc(item.store)} · Added ${new Date(item.created_at).toLocaleDateString()} · ${notifyBadge}</div>
-            ${target ? `<div class="item-target">${target}</div>` : ''}
-          </div>
-          <div class="item-price">${price}</div>
-          <div class="item-actions">
-            <button class="btn btn-primary" style="font-size:12px;padding:6px 12px;" onclick="showHistory('${item.id}','${esc(item.name)}')">📊 History</button>
-            <button class="btn btn-secondary" onclick="editTarget('${item.id}','${esc(item.name)}',${item.target_price || 'null'})">🎯 Target</button>
-            ${notifyBtn}
-            <button class="btn btn-secondary" onclick="checkNow('${item.id}')">🔄 Check</button>
-            <button class="btn btn-danger" onclick="deleteItem('${item.id}','${esc(item.name)}')">🗑 Remove</button>
-          </div>
-        </div>`;
-    }).join('');
+    searchBar.style.display = 'block';
+    renderItems();
 
   } catch (err) {
     container.innerHTML = `<div class="empty-state"><span>⚠️</span>Failed to load: ${err.message}</div>`;
