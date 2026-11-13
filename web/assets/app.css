@@ -150,6 +150,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--gray-400); outl
 .store-heading h3 { font-size: 15px; color: var(--gray-700); display: flex; align-items: center; gap: 8px; }
 .store-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
 .store-dot.woolworths { background: #008a46; }
+.store-dot.coles { background: #e01a22; }
 .store-dot.chemist { background: #d71920; }
 .store-dot.iherb { background: #458500; }
 .store-subtotal { font-size: 13px; color: var(--gray-500); text-align: right; }

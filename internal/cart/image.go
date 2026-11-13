@@ -282,7 +282,7 @@ func safeImageURL(raw string) (string, error) {
 		return "", fmt.Errorf("unsupported product photo URL")
 	}
 	host := strings.ToLower(u.Hostname())
-	for _, domain := range []string{"woolworths.media", "woolworths.com.au", "chemistwarehouse.com.au", "images-iherb.com", "iherb.com"} {
+	for _, domain := range []string{"woolworths.media", "woolworths.com.au", "coles.com.au", "chemistwarehouse.com.au", "images-iherb.com", "iherb.com"} {
 		if host == domain || strings.HasSuffix(host, "."+domain) {
 			return u.String(), nil
 		}

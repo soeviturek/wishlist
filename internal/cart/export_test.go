@@ -99,6 +99,7 @@ func TestProductPhotoURLValidation(t *testing.T) {
 		"https://cdn0.woolworths.media/product.jpg",
 		"//static.chemistwarehouse.com.au/product.png",
 		"https://cloudinary.images-iherb.com/image.jpg",
+		"https://cdn.productimages.coles.com.au/productimages/3/3214780.jpg",
 	} {
 		if _, err := safeImageURL(raw); err != nil {
 			t.Errorf("retailer image %q should be supported: %v", raw, err)
@@ -108,6 +109,7 @@ func TestProductPhotoURLValidation(t *testing.T) {
 		"http://cdn0.woolworths.media/product.jpg",
 		"https://127.0.0.1/product.png",
 		"https://cdn0.woolworths.media.invalid/product.png",
+		"https://cdn.productimages.coles.com.au.invalid/product.jpg",
 		"https://example.com/woolworths.media/product.png",
 		"https://user:pass@cdn0.woolworths.media/product.png",
 		"https://cdn0.woolworths.media:8443/product.png",

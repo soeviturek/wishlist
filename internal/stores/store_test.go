@@ -7,6 +7,7 @@ func TestDetectProductURLHost(t *testing.T) {
 		"https://www.woolworths.com.au/shop/productdetails/123/milk",
 		"https://www.chemistwarehouse.com.au/buy/123/product",
 		"https://au.iherb.com/pr/product/123",
+		"https://www.coles.com.au/product/coles-herb-punnets-rosemary-10g-3214780",
 		"https://www.chemistwarehouse.com.au:443/buy/123/product",
 	} {
 		if _, err := Detect(raw); err != nil {
@@ -17,6 +18,8 @@ func TestDetectProductURLHost(t *testing.T) {
 		"https://example.com/?url=woolworths.com.au",
 		"https://chemistwarehouse.com.au.invalid/buy/123/product",
 		"https://notiherb.com/pr/product/123",
+		"https://coles.com.au.invalid/product/rosemary-3214780",
+		"https://notcoles.com.au/product/rosemary-3214780",
 		"https://woolworths.com.au@example.com/product",
 		"file://www.chemistwarehouse.com.au/product",
 		"https://www.chemistwarehouse.com.au:8080/buy/123/product",

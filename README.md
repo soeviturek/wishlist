@@ -9,9 +9,11 @@ Paste a product URL, enter your email, and the system will monitor the price dai
 | Store | Method |
 |---|---|
 | **Woolworths** | Internal JSON API (session cookie + `/apis/ui/product/detail/{stockcode}`) |
+| **Coles** | Server-rendered Next.js product data (current price, name, size and image) |
 | **Chemist Warehouse** | HTML scraping with embedded JSON price extraction |
+| **iHerb** | HTML scraping with JSON-LD product data |
 
-Adding a new store takes ~30 lines of Go — just implement the `Store` interface.
+Adding a new store only requires implementing the `Store` interface.
 
 ## Features
 
@@ -59,7 +61,9 @@ wishlist-tracker/
 │   └── stores/
 │       ├── store.go            # Store interface + registry
 │       ├── woolworths.go       # Woolworths scraper
-│       └── chemistwarehouse.go # Chemist Warehouse scraper
+│       ├── chemistwarehouse.go # Chemist Warehouse scraper
+│       ├── coles.go            # Coles scraper
+│       └── iherb.go            # iHerb scraper
 ├── web/index.html              # Wishlist page
 ├── web/cart.html               # Shopping cart page
 ├── web/assets/                 # Shared styles, scripts and bear logo

@@ -85,7 +85,7 @@ function renderCart() {
   }
   byId('cartItems').innerHTML = [...groups].sort(([a], [b]) => a.localeCompare(b)).map(([store, items]) => {
     const subtotal = totals(items);
-    const storeClass = { Woolworths: 'woolworths', 'Chemist Warehouse': 'chemist', iHerb: 'iherb' }[store] || '';
+    const storeClass = { Woolworths: 'woolworths', Coles: 'coles', 'Chemist Warehouse': 'chemist', iHerb: 'iherb' }[store] || '';
     return `<section class="store-section" aria-label="${esc(store)}">
       <div class="store-heading">
         <h3><span class="store-dot ${storeClass}"></span>${esc(store)}</h3>
