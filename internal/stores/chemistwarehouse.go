@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"wishlist-tracker/internal/models"
 
@@ -28,7 +29,7 @@ var cwRRPRe = regexp.MustCompile(`"rrp"\s*:\s*\{\s*"amount"\s*:\s*([\d.]+)`)
 type ChemistWarehouse struct{}
 
 func (c *ChemistWarehouse) Match(url string) bool {
-	return strings.Contains(strings.ToLower(url), "chemistwarehouse.com.au")
+	return matchesDomain(url, "chemistwarehouse.com.au")
 }
 
 func (c *ChemistWarehouse) Name() string {
@@ -36,7 +37,7 @@ func (c *ChemistWarehouse) Name() string {
 }
 
 func (c *ChemistWarehouse) GetProduct(url string) (*models.Product, error) {
-	client := &http.Client{}
+	client := &http.Client{Timeout: 20 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)

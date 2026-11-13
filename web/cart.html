@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopping Cart - Wishlist Price Tracker</title>
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<header class="header">
+  <h1 class="brand-title"><img class="brand-logo" src="/assets/favicon.png" alt="">Wishlist Price Tracker</h1>
+  <p>A handy shopping list for your next trip.</p>
+  <nav class="page-nav" aria-label="Main navigation">
+    <a href="/">Wishlist</a>
+    <a href="/cart" aria-current="page">Shopping cart</a>
+  </nav>
+</header>
+
+<main class="container cart-container">
+  <section class="card">
+    <h2>Your shopping cart</h2>
+    <form id="cartAccountForm" class="lookup">
+      <div>
+        <label for="cartEmail">Email</label>
+        <input type="email" id="cartEmail" placeholder="you@email.com" autocomplete="email" required>
+      </div>
+      <button class="btn btn-primary" id="loadCartBtn" type="submit">Load cart</button>
+    </form>
+    <p class="cart-help">Use the same email as your wishlist. Your cart is saved automatically; adding to it does not subscribe you to price alerts.</p>
+    <p id="accountStatus" class="search-status" role="status">Enter your email to load your cart.</p>
+  </section>
+
+  <div id="cartWorkspace" hidden>
+    <div class="cart-add-grid">
+      <section class="card">
+        <h2>Add a product link</h2>
+        <form id="cartLinkForm">
+          <label for="cartURL">Product URL</label>
+          <div class="inline-form">
+            <input id="cartURL" type="url" placeholder="Paste a product link..." required data-cart-write>
+            <button type="submit" class="btn btn-primary" id="addLinkBtn" data-cart-write>Add to cart</button>
+          </div>
+        </form>
+        <p class="cart-help">Woolworths, Chemist Warehouse and iHerb. We will extract the name, photo and price for you.</p>
+      </section>
+
+      <section class="card">
+        <h2>Find a saved product</h2>
+        <label for="productSearch">Search by item name</label>
+        <input id="productSearch" type="search" placeholder="e.g. milk, vitamins, shampoo..." maxlength="200" autocomplete="off">
+        <p id="searchStatus" class="search-status" role="status">Search your wishlist and products previously added by link, even after removing them.</p>
+        <div id="searchResults" class="search-results"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="section-heading cart-toolbar">
+        <h2>Shopping cart</h2>
+        <div class="toolbar-actions">
+          <button type="button" class="btn btn-primary" id="shareCartBtn" disabled>Share cart</button>
+          <button type="button" class="btn btn-secondary" id="exportTextBtn" disabled>Export text</button>
+        </div>
+      </div>
+      <div id="cartSummary" class="cart-summary" hidden>
+        <div>
+          <div class="cart-count" id="cartCount"></div>
+          <p class="cart-price-note">Prices are last recorded estimates and may change in store.</p>
+          <p class="cart-price-note" id="unknownPriceNote" hidden></p>
+        </div>
+        <div>
+          <div class="cart-summary-label" id="totalLabel">Estimated total</div>
+          <div class="cart-summary-total" id="cartTotal">$0.00</div>
+        </div>
+      </div>
+      <div id="cartItems" aria-live="polite">
+        <div class="empty-state">Your cart is empty. Paste a link, search saved products or add an item from your wishlist.</div>
+      </div>
+      <p class="sr-only" id="cartUpdateStatus" role="status"></p>
+    </section>
+  </div>
+</main>
+
+<dialog id="shareDialog" class="share-dialog" aria-labelledby="shareTitle">
+  <div class="section-heading">
+    <h3 id="shareTitle">Your take-along shopping list</h3>
+    <button type="button" class="btn btn-secondary" id="closeShareBtn">Close</button>
+  </div>
+  <p class="cart-help">A portrait image grouped by store, with product photos, quantities and prices. No email address is included.</p>
+  <p id="shareStatus" class="search-status" role="status">Preparing your shopping list...</p>
+  <div class="share-preview-frame" id="sharePreviewFrame" hidden>
+    <img id="sharePreview" class="share-preview" alt="Your shopping list, grouped by store, with the Wishlist Tracker bear watermark">
+  </div>
+  <div class="toolbar-actions">
+    <button type="button" class="btn btn-primary" id="nativeShareBtn" disabled hidden>Share image</button>
+    <button type="button" class="btn btn-primary" id="downloadImageBtn" disabled>Download PNG</button>
+    <button type="button" class="btn btn-secondary" id="dialogTextBtn">Export text</button>
+  </div>
+</dialog>
+
+<script src="/assets/common.js"></script>
+<script src="/assets/cart.js"></script>
+</body>
+</html>

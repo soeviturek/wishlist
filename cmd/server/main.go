@@ -59,6 +59,8 @@ func main() {
 	// Serve frontend static files
 	router.StaticFile("/", "./web/index.html")
 	router.StaticFile("/index.html", "./web/index.html")
+	router.StaticFile("/cart", "./web/cart.html")
+	router.StaticFile("/cart.html", "./web/cart.html")
 	router.Static("/assets", "./web/assets")
 	router.Static("/static", "./web/static")
 

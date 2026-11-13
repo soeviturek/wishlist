@@ -110,7 +110,7 @@ func (d *DB) migrate() error {
 	d.conn.Exec(`ALTER TABLE items ADD COLUMN notified INTEGER NOT NULL DEFAULT 0`)
 	d.conn.Exec(`ALTER TABLE items ADD COLUMN image_url TEXT NOT NULL DEFAULT ''`)
 
-	return nil
+	return d.migrateCart()
 }
 
 // ---------------------------------------------------------------------------
@@ -122,13 +122,26 @@ func (d *DB) CreateItem(email, url, store, name, imageURL string, targetPrice *f
 	id := uuid.New().String()
 	now := time.Now().UTC()
 
-	_, err := d.conn.Exec(
+	tx, err := d.conn.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("begin item: %w", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(
 		`INSERT INTO items (id, email, url, store, name, image_url, target_price, notified, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`,
 		id, email, url, store, name, imageURL, targetPrice, fmtTime(now),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert item: %w", err)
+	}
+
+	if _, err := saveProduct(tx, email, url, store, name, imageURL, nil, now); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit item: %w", err)
 	}
 
 	return &models.Item{
@@ -252,42 +265,45 @@ func (d *DB) RecordPrice(itemID string, price float64) (*models.Price, error) {
 	nowStr := fmtTime(now)
 	today := now.Format("2006-01-02")
 
-	// Check if we already have a price for this item today.
-	var existingID string
-	err := d.conn.QueryRow(
+	tx, err := d.conn.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("begin price: %w", err)
+	}
+	defer tx.Rollback()
+
+	var id string
+	err = tx.QueryRow(
 		`SELECT id FROM prices WHERE item_id = ? AND SUBSTR(recorded_at, 1, 10) = ?`,
 		itemID, today,
-	).Scan(&existingID)
+	).Scan(&id)
 
 	if err == nil {
-		// Update existing record for today
-		_, err = d.conn.Exec(
+		_, err = tx.Exec(
 			`UPDATE prices SET price = ?, recorded_at = ? WHERE id = ?`,
-			price, nowStr, existingID,
+			price, nowStr, id,
 		)
-		if err != nil {
-			return nil, fmt.Errorf("update price: %w", err)
-		}
-		return &models.Price{
-			ID:         existingID,
-			ItemID:     itemID,
-			Price:      price,
-			RecordedAt: now,
-		}, nil
-	}
-
-	if err != sql.ErrNoRows {
+	} else if err == sql.ErrNoRows {
+		id = uuid.New().String()
+		_, err = tx.Exec(
+			`INSERT INTO prices (id, item_id, price, recorded_at) VALUES (?, ?, ?, ?)`,
+			id, itemID, price, nowStr,
+		)
+	} else {
 		return nil, fmt.Errorf("check existing price: %w", err)
 	}
-
-	// Insert new record
-	id := uuid.New().String()
-	_, err = d.conn.Exec(
-		`INSERT INTO prices (id, item_id, price, recorded_at) VALUES (?, ?, ?, ?)`,
-		id, itemID, price, nowStr,
-	)
 	if err != nil {
-		return nil, fmt.Errorf("insert price: %w", err)
+		return nil, fmt.Errorf("record price: %w", err)
+	}
+
+	if _, err := tx.Exec(
+		`UPDATE products SET current_price = ?, price_updated_at = ?
+		 WHERE (email, url) IN (SELECT email, url FROM items WHERE id = ?)`,
+		price, nowStr, itemID,
+	); err != nil {
+		return nil, fmt.Errorf("update saved product price: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit price: %w", err)
 	}
 
 	return &models.Price{

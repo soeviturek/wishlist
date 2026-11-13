@@ -6,245 +6,17 @@
 <title>Wishlist Price Tracker</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<style>
-  :root {
-    --blue: #2563eb;
-    --green: #16a34a;
-    --red: #dc2626;
-    --gray-50: #f8fafc;
-    --gray-100: #f1f5f9;
-    --gray-200: #e2e8f0;
-    --gray-400: #94a3b8;
-    --gray-500: #64748b;
-    --gray-700: #334155;
-    --gray-900: #0f172a;
-    --radius: 12px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--gray-100);
-    color: var(--gray-900);
-    min-height: 100vh;
-  }
-  .header {
-    background: var(--blue);
-    color: white;
-    padding: 24px 0;
-    text-align: center;
-    box-shadow: 0 2px 12px rgba(37,99,235,.25);
-  }
-  .header h1 { font-size: 24px; font-weight: 700; }
-  .header p  { font-size: 14px; opacity: .8; margin-top: 4px; }
-
-  .container { max-width: 800px; margin: 0 auto; padding: 24px 16px; }
-
-  /* --- Track Form --- */
-  .card {
-    background: white;
-    border-radius: var(--radius);
-    padding: 24px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
-  }
-  .card h2 {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: var(--gray-700);
-  }
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  .form-grid .full { grid-column: 1 / -1; }
-  label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--gray-500);
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    margin-bottom: 4px;
-  }
-  input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--gray-200);
-    border-radius: 8px;
-    font-size: 14px;
-    transition: border .15s;
-  }
-  input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background .15s, opacity .15s;
-  }
-  .btn:disabled { opacity: .5; cursor: not-allowed; }
-  .btn-primary { background: var(--blue); color: white; }
-  .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
-  .btn-danger  { background: var(--red); color: white; font-size: 12px; padding: 6px 12px; }
-  .btn-danger:hover:not(:disabled) { background: #b91c1c; }
-  .btn-secondary { background: var(--gray-200); color: var(--gray-700); font-size: 12px; padding: 6px 12px; }
-  .btn-secondary:hover:not(:disabled) { background: var(--gray-400); color: white; }
-
-  /* --- Toast --- */
-  .toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 12px 20px;
-    border-radius: 8px;
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 999;
-    animation: slideIn .3s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,.15);
-  }
-  .toast.success { background: var(--green); }
-  .toast.error   { background: var(--red); }
-  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-  /* --- Lookup bar --- */
-  .lookup {
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-  }
-  .lookup > div { flex: 1; }
-
-  /* --- Search bar --- */
-  .search-bar {
-    margin-bottom: 12px;
-  }
-  .search-bar input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--gray-200);
-    border-radius: 8px;
-    font-size: 14px;
-  }
-
-  /* --- Pagination --- */
-  .pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    margin-top: 16px;
-    font-size: 14px;
-    color: var(--gray-500);
-  }
-  .pagination button {
-    padding: 6px 14px;
-    border: 1px solid var(--gray-200);
-    border-radius: 8px;
-    background: white;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background .15s;
-  }
-  .pagination button:hover:not(:disabled) { background: var(--gray-100); }
-  .pagination button:disabled { opacity: .4; cursor: not-allowed; }
-
-  /* --- Items List --- */
-  .item-card {
-    display: flex;
-    gap: 16px;
-    padding: 16px;
-    border: 1px solid var(--gray-200);
-    border-radius: 10px;
-    margin-bottom: 12px;
-    align-items: center;
-    transition: box-shadow .15s;
-  }
-  .item-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-  .item-img {
-    width: 64px;
-    height: 64px;
-    object-fit: contain;
-    border-radius: 8px;
-    background: var(--gray-50);
-    border: 1px solid var(--gray-200);
-    flex-shrink: 0;
-  }
-  .item-info { flex: 1; min-width: 0; }
-  .item-name {
-    font-weight: 600;
-    font-size: 14px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .item-store { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
-  .item-price { font-size: 20px; font-weight: 700; color: var(--green); white-space: nowrap; }
-  .item-target { font-size: 11px; color: var(--gray-400); }
-  .item-actions { display: flex; gap: 6px; flex-shrink: 0; flex-direction: column; }
-
-  /* --- Modal --- */
-  .modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,.4);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn .2s;
-  }
-  @keyframes fadeIn { from { opacity: 0; } }
-  .modal {
-    background: white;
-    border-radius: var(--radius);
-    padding: 24px;
-    width: 90%;
-    max-width: 640px;
-    max-height: 85vh;
-    overflow-y: auto;
-    box-shadow: 0 12px 40px rgba(0,0,0,.2);
-  }
-  .modal h3 { font-size: 16px; margin-bottom: 16px; }
-  .modal canvas { width: 100% !important; height: auto !important; }
-
-  /* --- Loading --- */
-  .spinner {
-    display: inline-block;
-    width: 16px; height: 16px;
-    border: 2px solid rgba(255,255,255,.3);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin .6s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .empty-state {
-    text-align: center;
-    padding: 40px;
-    color: var(--gray-400);
-  }
-  .empty-state span { font-size: 40px; display: block; margin-bottom: 12px; }
-
-  @media (max-width: 600px) {
-    .form-grid { grid-template-columns: 1fr; }
-    .item-card { flex-wrap: wrap; }
-  }
-</style>
+<link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
 
 <div class="header">
-  <h1>📉 Wishlist Price Tracker</h1>
-  <p>Track prices from Woolworths & Chemist Warehouse</p>
+  <h1 class="brand-title"><img class="brand-logo" src="/assets/favicon.png" alt="">Wishlist Price Tracker</h1>
+  <p>Track prices from Woolworths, Chemist Warehouse & iHerb</p>
+  <nav class="page-nav" aria-label="Main navigation">
+    <a href="/" aria-current="page">Wishlist</a>
+    <a href="/cart">Shopping cart</a>
+  </nav>
 </div>
 
 <div class="container">
@@ -312,17 +84,8 @@
   </div>
 </div>
 
+<script src="/assets/common.js"></script>
 <script>
-const API = '';  // same origin
-
-// --- Toast ---
-function toast(msg, type = 'success') {
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.textContent = msg;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 3500);
-}
 
 // --- Persist email in localStorage ---
 const savedEmail = localStorage.getItem('wt_email') || '';
@@ -446,6 +209,7 @@ function renderItems() {
         </div>
         <div class="item-price">${price}</div>
         <div class="item-actions">
+          <button type="button" class="btn btn-primary btn-small" data-cart-item="${item.id}">Add to cart</button>
           <button class="btn btn-primary" style="font-size:12px;padding:6px 12px;" onclick="showHistory('${item.id}','${esc(item.name)}')">📊 History</button>
           <button class="btn btn-secondary" onclick="editTarget('${item.id}','${esc(item.name)}',${item.target_price || 'null'})">🎯 Target</button>
           ${notifyBtn}
@@ -507,7 +271,28 @@ async function loadItems(email) {
   }
 }
 
-function esc(s) { return s ? s.replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;') : ''; }
+document.getElementById('itemsList').addEventListener('click', async event => {
+  const button = event.target.closest('button[data-cart-item]');
+  if (!button) return;
+  const item = allItems.find(item => item.id === button.dataset.cartItem);
+  if (!item) {
+    toast('Reload your wishlist before adding this product.', 'error');
+    return;
+  }
+  button.disabled = true;
+  try {
+    const added = await apiJSON('/cart/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: item.email, item_id: item.id })
+    });
+    toast(`Added to cart: ${added.name} (quantity ${added.quantity})`);
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    button.disabled = false;
+  }
+});
 
 // --- Manual check ---
 async function checkNow(id) {

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"regexp"
-	"strings"
 	"time"
 
 	"wishlist-tracker/internal/models"
@@ -32,7 +31,7 @@ var stockcodeRe = regexp.MustCompile(`/productdetails/(\d+)`)
 type Woolworths struct{}
 
 func (w *Woolworths) Match(url string) bool {
-	return strings.Contains(strings.ToLower(url), "woolworths.com.au")
+	return matchesDomain(url, "woolworths.com.au")
 }
 
 func (w *Woolworths) Name() string {

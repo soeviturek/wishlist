@@ -8,7 +8,9 @@ require (
 	github.com/go-co-op/gocron v1.37.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
+	github.com/refraction-networking/utls v1.8.2
 	github.com/wcharczuk/go-chart/v2 v2.1.2
+	golang.org/x/image v0.18.0
 	modernc.org/sqlite v1.29.6
 )
 
@@ -35,7 +37,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
-	github.com/refraction-networking/utls v1.8.2 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
@@ -43,7 +44,6 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.23.0 // indirect

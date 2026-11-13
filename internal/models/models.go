@@ -58,3 +58,32 @@ type Product struct {
 	Price    float64
 	ImageURL string
 }
+
+const MaxCartQuantity = 999
+
+// SavedProduct is a reusable product, independent of price-alert subscriptions.
+type SavedProduct struct {
+	ID             string     `json:"id"`
+	Email          string     `json:"-"`
+	URL            string     `json:"url"`
+	Store          string     `json:"store"`
+	Name           string     `json:"name"`
+	ImageURL       string     `json:"image_url,omitempty"`
+	CurrentPrice   *float64   `json:"current_price"`
+	PriceUpdatedAt *time.Time `json:"price_updated_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+}
+
+type CartItem struct {
+	SavedProduct
+	Quantity int       `json:"quantity"`
+	AddedAt  time.Time `json:"added_at"`
+}
+
+type AddCartRequest struct {
+	Email     string `json:"email" binding:"required,email"`
+	URL       string `json:"url" binding:"omitempty,url"`
+	ItemID    string `json:"item_id"`
+	ProductID string `json:"product_id"`
+	Quantity  *int   `json:"quantity" binding:"omitempty,min=1,max=999"`
+}

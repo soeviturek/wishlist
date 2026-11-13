@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"wishlist-tracker/internal/models"
@@ -26,8 +25,7 @@ var iherbProductRe = regexp.MustCompile(`/pr/[^/]+/(\d+)`)
 type IHerb struct{}
 
 func (i *IHerb) Match(url string) bool {
-	lower := strings.ToLower(url)
-	return strings.Contains(lower, "iherb.com")
+	return matchesDomain(url, "iherb.com")
 }
 
 func (i *IHerb) Name() string {

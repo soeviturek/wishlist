@@ -34,6 +34,13 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.PATCH("/items/:id/notify", h.ToggleNotify)
 	r.PATCH("/items/:id/target", h.UpdateTarget)
 	r.DELETE("/items/:id", h.DeleteItem)
+	r.GET("/products", h.SearchProducts)
+	r.GET("/cart/items", h.ListCart)
+	r.POST("/cart/items", h.AddCartItem)
+	r.PATCH("/cart/items/:id", h.UpdateCartQuantity)
+	r.DELETE("/cart/items/:id", h.DeleteCartItem)
+	r.GET("/cart/export.png", h.ExportCartImage)
+	r.GET("/cart/export.txt", h.ExportCartText)
 	r.GET("/health", h.HealthCheck)
 }
 
