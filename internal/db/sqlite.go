@@ -399,7 +399,7 @@ func (d *DB) RecordNotification(itemID string, price float64) error {
 // HasNotificationForPrice checks if a notification was already sent for this price.
 func (d *DB) HasNotificationForPrice(itemID string, price float64) (bool, error) {
 	row := d.conn.QueryRow(
-		`SELECT COUNT(*) FROM notifications WHERE item_id = ? AND price = ?`,
+		`SELECT COUNT(*) FROM notifications WHERE item_id = ? AND ROUND(price, 2) = ROUND(?, 2)`,
 		itemID, price,
 	)
 	var count int

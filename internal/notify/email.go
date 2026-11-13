@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"math"
 	"mime/multipart"
 	"net/smtp"
 	"net/textproto"
@@ -46,6 +47,11 @@ type PriceDropAlert struct {
 	IsTarget     bool // true if the alert is because target price was reached
 	PriceHistory []models.PriceHistory
 	ChartPNG     []byte // optional PNG chart of price history
+}
+
+// PriceChange returns the change in dollars, comparing prices at cent precision.
+func PriceChange(previous, current float64) float64 {
+	return (math.Round(current*100) - math.Round(previous*100)) / 100
 }
 
 // SendPriceAlert sends a price-drop or target-price email.
@@ -141,7 +147,7 @@ func buildDigestHTML(alerts []PriceDropAlert, subject string) string {
 
 	// Each alert as a card — using table layout for email client compatibility
 	for i, a := range alerts {
-		savings := a.OldPrice - a.NewPrice
+		savings := -PriceChange(a.OldPrice, a.NewPrice)
 		savingsPct := float64(0)
 		if a.OldPrice > 0 {
 			savingsPct = (savings / a.OldPrice) * 100
@@ -179,7 +185,11 @@ func buildDigestHTML(alerts []PriceDropAlert, subject string) string {
 		sb.WriteString(`<td valign="top" style="padding-right:12px;">`)
 		sb.WriteString(badge)
 		sb.WriteString(fmt.Sprintf(`<div style="font-weight:600;font-size:14px;color:#1e293b;margin-bottom:4px;">%s</div>`, a.ProductName))
-		sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;color:#64748b;"><s style="color:#dc2626;">$%.2f</s> &rarr; <strong style="color:#16a34a;font-size:15px;">$%.2f</strong>%s</div>`, a.OldPrice, a.NewPrice, savingsStr))
+		if savings > 0 {
+			sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;color:#64748b;"><s style="color:#dc2626;">$%.2f</s> &rarr; <strong style="color:#16a34a;font-size:15px;">$%.2f</strong>%s</div>`, a.OldPrice, a.NewPrice, savingsStr))
+		} else {
+			sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;color:#64748b;">Current Price: <strong style="color:#16a34a;font-size:15px;">$%.2f</strong></div>`, a.NewPrice))
+		}
 		sb.WriteString(`</td>`)
 
 		// Button cell — fixed width, vertically centered
@@ -254,7 +264,7 @@ func buildMIMEMessage(from string, alert PriceDropAlert, subject string) ([]byte
 // buildHTMLBody generates a styled HTML email with price info, history table,
 // and an embedded chart image.
 func buildHTMLBody(alert PriceDropAlert, subject string) string {
-	savings := alert.OldPrice - alert.NewPrice
+	savings := -PriceChange(alert.OldPrice, alert.NewPrice)
 	savingsPct := float64(0)
 	if alert.OldPrice > 0 {
 		savingsPct = (savings / alert.OldPrice) * 100
@@ -289,8 +299,12 @@ func buildHTMLBody(alert PriceDropAlert, subject string) string {
 
 	// Price cards
 	sb.WriteString(`<div style="display:flex;gap:12px;margin-bottom:24px;">`)
-	sb.WriteString(fmt.Sprintf(`<div style="flex:1;background:#fee2e2;border-radius:8px;padding:14px;text-align:center;"><div style="font-size:12px;color:#991b1b;text-transform:uppercase;font-weight:600;">Old Price</div><div style="font-size:26px;font-weight:700;color:#dc2626;text-decoration:line-through;">$%.2f</div></div>`, alert.OldPrice))
-	sb.WriteString(fmt.Sprintf(`<div style="flex:1;background:#dcfce7;border-radius:8px;padding:14px;text-align:center;"><div style="font-size:12px;color:#166534;text-transform:uppercase;font-weight:600;">New Price</div><div style="font-size:26px;font-weight:700;color:#16a34a;">$%.2f</div></div>`, alert.NewPrice))
+	if savings > 0 {
+		sb.WriteString(fmt.Sprintf(`<div style="flex:1;background:#fee2e2;border-radius:8px;padding:14px;text-align:center;"><div style="font-size:12px;color:#991b1b;text-transform:uppercase;font-weight:600;">Previous Price</div><div style="font-size:26px;font-weight:700;color:#dc2626;text-decoration:line-through;">$%.2f</div></div>`, alert.OldPrice))
+		sb.WriteString(fmt.Sprintf(`<div style="flex:1;background:#dcfce7;border-radius:8px;padding:14px;text-align:center;"><div style="font-size:12px;color:#166534;text-transform:uppercase;font-weight:600;">New Price</div><div style="font-size:26px;font-weight:700;color:#16a34a;">$%.2f</div></div>`, alert.NewPrice))
+	} else {
+		sb.WriteString(fmt.Sprintf(`<div style="flex:1;background:#dcfce7;border-radius:8px;padding:14px;text-align:center;"><div style="font-size:12px;color:#166534;text-transform:uppercase;font-weight:600;">Current Price</div><div style="font-size:26px;font-weight:700;color:#16a34a;">$%.2f</div></div>`, alert.NewPrice))
+	}
 	sb.WriteString(`</div>`)
 
 	// Savings badge
@@ -329,7 +343,7 @@ func buildHTMLBody(alert PriceDropAlert, subject string) string {
 			// entries are ascending (oldest first); compare with prior entry
 			changeStr := "—"
 			if i > 0 {
-				diff := h.Price - entries[i-1].Price
+				diff := PriceChange(entries[i-1].Price, h.Price)
 				if diff < 0 {
 					changeStr = fmt.Sprintf(`<span style="color:#16a34a;">▼ $%.2f</span>`, -diff)
 				} else if diff > 0 {

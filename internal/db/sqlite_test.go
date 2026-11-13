@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,6 +23,27 @@ func setupTestDB(t *testing.T) *DB {
 		os.Remove(dbPath)
 	})
 	return d
+}
+
+func TestNotificationsDeduplicateSameCent(t *testing.T) {
+	d := setupTestDB(t)
+	item, err := d.CreateItem("shopper@example.test", "https://example.test/protein", "TestStore", "Whey Protein", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d.RecordNotification(item.ID, 89.99); err != nil {
+		t.Fatal(err)
+	}
+	for _, price := range []float64{89.99, math.Nextafter(89.99, math.Inf(1)), math.Nextafter(89.99, math.Inf(-1))} {
+		sent, err := d.HasNotificationForPrice(item.ID, price)
+		if err != nil || !sent {
+			t.Errorf("same-cent price %.17g should already be notified: %v, %v", price, sent, err)
+		}
+	}
+	sent, err := d.HasNotificationForPrice(item.ID, 89.98)
+	if err != nil || sent {
+		t.Errorf("a different cent value should remain eligible for notification: %v, %v", sent, err)
+	}
 }
 
 func TestItemExistsByEmailAndURL_NoDuplicate(t *testing.T) {

@@ -94,6 +94,8 @@ func (p *Poller) pollAll() {
 		prevPrice, err := p.db.GetLatestPrice(item.ID)
 		if err != nil {
 			log.Printf("[scheduler] Error getting latest price for %s: %v", item.ID, err)
+			errors++
+			continue
 		}
 
 		// Record new price
@@ -110,8 +112,9 @@ func (p *Poller) pollAll() {
 
 		// If price went UP while muted, only unmute if it rose above target (or no target set).
 		// If still at/below target, stay muted — just record the price silently.
-		if product.Price > prevPrice.Price && item.Notified {
-			if item.TargetPrice == nil || product.Price > *item.TargetPrice {
+		change := notify.PriceChange(prevPrice.Price, product.Price)
+		if change > 0 && item.Notified {
+			if item.TargetPrice == nil || notify.PriceChange(*item.TargetPrice, product.Price) > 0 {
 				if err := p.db.SetNotified(item.ID, false); err != nil {
 					log.Printf("[scheduler] Error unmuting %s: %v", item.ID, err)
 				}
@@ -125,12 +128,12 @@ func (p *Poller) pollAll() {
 		shouldNotify := false
 		isTarget := false
 
-		if product.Price < prevPrice.Price {
+		if change < 0 {
 			shouldNotify = true
 			drops++
 		}
 
-		if item.TargetPrice != nil && product.Price <= *item.TargetPrice {
+		if item.TargetPrice != nil && notify.PriceChange(*item.TargetPrice, product.Price) <= 0 {
 			shouldNotify = true
 			isTarget = true
 		}
@@ -157,18 +160,12 @@ func (p *Poller) pollAll() {
 			log.Printf("[scheduler] Chart generation failed for %s: %v", item.Name, chartErr)
 		}
 
-		// Use the original (first) price for the email, not yesterday's price
-		originalPrice := prevPrice.Price
-		if first, err := p.db.GetFirstPrice(item.ID); err == nil && first != nil {
-			originalPrice = first.Price
-		}
-
 		alertsByEmail[item.Email] = append(alertsByEmail[item.Email], pendingAlert{
 			alert: notify.PriceDropAlert{
 				ProductName:  item.Name,
 				ProductURL:   item.URL,
 				ImageURL:     product.ImageURL,
-				OldPrice:     originalPrice,
+				OldPrice:     prevPrice.Price,
 				NewPrice:     product.Price,
 				IsTarget:     isTarget,
 				PriceHistory: history,

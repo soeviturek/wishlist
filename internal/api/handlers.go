@@ -232,11 +232,18 @@ func (h *Handler) ManualCheck(c *gin.Context) {
 	}
 
 	// Get previous price
-	prevPrice, _ := h.DB.GetLatestPrice(item.ID)
+	prevPrice, err := h.DB.GetLatestPrice(item.ID)
+	if err != nil {
+		log.Printf("[api] get latest price error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get previous price"})
+		return
+	}
 
 	// Record new price
 	if _, err := h.DB.RecordPrice(item.ID, product.Price); err != nil {
 		log.Printf("[api] record price error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to record price"})
+		return
 	}
 
 	// Check for price drop and notify
@@ -254,19 +261,24 @@ func (h *Handler) ManualCheck(c *gin.Context) {
 		isTarget := false
 
 		// Price drop
-		if product.Price < prevPrice.Price {
+		if notify.PriceChange(prevPrice.Price, product.Price) < 0 {
 			shouldNotify = true
 		}
 
 		// Target price reached
-		if item.TargetPrice != nil && product.Price <= *item.TargetPrice {
+		if item.TargetPrice != nil && notify.PriceChange(*item.TargetPrice, product.Price) <= 0 {
 			shouldNotify = true
 			isTarget = true
 		}
 
 		if shouldNotify {
 			// Check for duplicate notification
-			alreadySent, _ := h.DB.HasNotificationForPrice(item.ID, product.Price)
+			alreadySent, err := h.DB.HasNotificationForPrice(item.ID, product.Price)
+			if err != nil {
+				log.Printf("[api] check notification error: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check previous notifications"})
+				return
+			}
 			if !alreadySent {
 				// Fetch price history and generate chart for the email
 				history, _ := h.DB.GetPriceHistory(item.ID)
@@ -289,7 +301,9 @@ func (h *Handler) ManualCheck(c *gin.Context) {
 				if err != nil {
 					log.Printf("[api] send email error: %v", err)
 				} else {
-					_ = h.DB.RecordNotification(item.ID, product.Price)
+					if err := h.DB.RecordNotification(item.ID, product.Price); err != nil {
+						log.Printf("[api] record notification error: %v", err)
+					}
 					result["notified"] = true
 				}
 			}
